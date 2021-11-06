@@ -69,6 +69,7 @@ namespace Blockly.Blocks
             if (dynamicTableEntity is not null)
                 return new ModelDescriptor()
                 {
+                    Id = dynamicTableEntity.RowKey,
                     Name = dynamicTableEntity.Properties.ContainsKey("Name") ? dynamicTableEntity.Properties["Name"].StringValue : string.Empty,
                     DefinitionsBlobId = dynamicTableEntity.Properties.ContainsKey("DefinitionsBlobId") ? dynamicTableEntity.Properties["DefinitionsBlobId"].StringValue : string.Empty,
                     LibraryBlobId = dynamicTableEntity.Properties.ContainsKey("LibraryBlobId") ? dynamicTableEntity.Properties["LibraryBlobId"].StringValue : string.Empty,
@@ -165,9 +166,8 @@ namespace Blockly.Blocks
             await blockBlob.DeleteAsync();
         }
 
-
         [FunctionName("Model_Post")]
-        public static async Task<IActionResult> ModelPost(
+        public static async Task<IActionResult> PostModel(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "{modelName}")] HttpRequest req,
             string modelName,
             ILogger log)
@@ -179,8 +179,34 @@ namespace Blockly.Blocks
             return new OkObjectResult(new Model() { Id = modelDescriptorId, Name = modelName });
         }
 
+        [FunctionName("Model_Put")]
+        public static async Task<IActionResult> PutModel(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "models/{modelId}/{newName}")] HttpRequest req,
+            string modelId,
+            string newName,
+            ILogger log)
+        {
+            if (!string.IsNullOrEmpty(newName))
+            {
+                var currentModelDescritor = await GetModelDescriptorAsync(modelId);
+
+                if (currentModelDescritor is not null)
+                {
+                    currentModelDescritor.Name = newName;
+
+                    await UpdateModelDescriptorAsync(currentModelDescritor, modelId);
+
+                    return new OkObjectResult(new Model() { Id = currentModelDescritor.Id, Name = currentModelDescritor.Name });
+                }
+
+                return new NotFoundObjectResult("Model not found");
+            }
+
+            return new BadRequestObjectResult("New name is empty");
+        }
+
         [FunctionName("Models_Get")]
-        public static async Task<IActionResult> ModelsGet(
+        public static async Task<IActionResult> GetModels(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "models")] HttpRequest req,
             ILogger log)
         {
@@ -294,7 +320,7 @@ namespace Blockly.Blocks
         }
 
         [FunctionName("Toolboxes_Post")]
-        public static async Task<IActionResult> toolboxesPost(
+        public static async Task<IActionResult> ToolboxesPost(
             [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "toolboxes/{modelId}")] HttpRequest req,
             string modelId,
             ILogger log)
@@ -319,7 +345,7 @@ namespace Blockly.Blocks
         }
 
         [FunctionName("Toolboxes_Get")]
-        public static async Task<IActionResult> toolboxesGet(
+        public static async Task<IActionResult> ToolboxesGet(
             [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "toolboxes/{modelId}")] HttpRequest req,
             string modelId,
             ILogger log)
