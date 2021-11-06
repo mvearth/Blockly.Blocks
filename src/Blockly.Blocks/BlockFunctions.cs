@@ -1,17 +1,16 @@
-using System;
-using System.IO;
-using System.Threading.Tasks;
+using Blockly.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.WebJobs;
 using Microsoft.Azure.WebJobs.Extensions.Http;
-using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
-using Blockly.Models;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Table;
 using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.WindowsAzure.Storage.Table;
+using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace Blockly.Blocks
 {
@@ -94,7 +93,7 @@ namespace Blockly.Blocks
                 foreach (var dynamicTableEntity in queryResult.Results)
                     modelDescriptors.Add(new Model()
                     {
-                        Id = dynamicTableEntity.PartitionKey,
+                        Id = dynamicTableEntity.RowKey,
                         Name = dynamicTableEntity.Properties.ContainsKey("Name") ? dynamicTableEntity.Properties["Name"].StringValue : string.Empty,
                     });
 
