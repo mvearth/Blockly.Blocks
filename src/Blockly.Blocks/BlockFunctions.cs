@@ -62,10 +62,13 @@ namespace Blockly.Blocks
 
         private static async Task<ModelDescriptor> GetModelDescriptorAsync(string id)
         {
-            var retrieveOperation = TableOperation.Retrieve<DynamicTableEntity>("model", id);
-            var tableResult = await modelTable.ExecuteAsync(retrieveOperation);
-            var dynamicTableEntity = tableResult.Result as DynamicTableEntity;
+            var dynamicTableEntity = await GetModelEntity(id);
 
+            return CreateModelDescritor(dynamicTableEntity);
+        }
+
+        private static ModelDescriptor CreateModelDescritor(DynamicTableEntity dynamicTableEntity)
+        {
             if (dynamicTableEntity is not null)
                 return new ModelDescriptor()
                 {
@@ -77,6 +80,13 @@ namespace Blockly.Blocks
                 };
 
             return null;
+        }
+
+        private static async Task<DynamicTableEntity> GetModelEntity(string id)
+        {
+            var retrieveOperation = TableOperation.Retrieve<DynamicTableEntity>("model", id);
+            var tableResult = await modelTable.ExecuteAsync(retrieveOperation);
+            return tableResult.Result as DynamicTableEntity;
         }
 
         private static async Task<IEnumerable<Model>> GetAllModelsAsync()
@@ -144,6 +154,29 @@ namespace Blockly.Blocks
             }
         }
 
+        private static async Task DeleteModel(string id)
+        {
+            var dynamicTableEntity = await GetModelEntity(id);
+
+            if (dynamicTableEntity is not null)
+            {
+                var currentModelDescriptor = CreateModelDescritor(dynamicTableEntity);
+
+                if (!string.IsNullOrWhiteSpace(currentModelDescriptor.LibraryBlobId))
+                    await librariesBlobContainer.RemoveBlobAsync(currentModelDescriptor.LibraryBlobId);
+
+                if (!string.IsNullOrWhiteSpace(currentModelDescriptor.DefinitionsBlobId))
+                    await definitionsBlobContainer.RemoveBlobAsync(currentModelDescriptor.DefinitionsBlobId);
+
+                if (!string.IsNullOrWhiteSpace(currentModelDescriptor.ToolBoxBlobId))
+                    await toolboxesBlobContainer.RemoveBlobAsync(currentModelDescriptor.ToolBoxBlobId);
+
+                var deleteOperation = TableOperation.Delete(dynamicTableEntity);
+
+                await modelTable.ExecuteAsync(deleteOperation);
+            }
+        }
+
         private static async Task GetAsync(this CloudBlobContainer @this, string id, Stream stream)
         {
             var blockBlob = @this.GetBlockBlobReference(id);
@@ -203,6 +236,16 @@ namespace Blockly.Blocks
             }
 
             return new BadRequestObjectResult("New name is empty");
+        }
+
+        [FunctionName("Model_Del")]
+        public static async Task<IActionResult> DeleteModel(
+            [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "models/{modelId}/")] HttpRequest req,
+            string modelId,
+            ILogger log)
+        {
+            await DeleteModel(modelId);
+            return new OkResult();
         }
 
         [FunctionName("Models_Get")]
